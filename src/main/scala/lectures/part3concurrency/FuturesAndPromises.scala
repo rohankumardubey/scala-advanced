@@ -3,7 +3,7 @@ package lectures.part3concurrency
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 object FuturesAndPromises extends App {
@@ -57,4 +57,63 @@ object FuturesAndPromises extends App {
    * Transform Future
    */
   val nextMagicNumberF: Future[Int] = aFuture.map(_ + 1)
+
+  /**
+   * Promise
+   */
+  val promise = Promise[Int]()
+  val future = promise.future
+
+  // Thread-1 Consumer
+  future.onComplete {
+    case Success(r) => println("[consumer] I have received " + r)
+  }
+
+  // Thread-2 Producer
+  val producer = new Thread(() => {
+    println("[producer] crunching numbers...")
+    Thread.sleep(500)
+    promise.success(42)
+    println("[producer] done")
+  })
+
+  producer.start()
+  Thread.sleep(1000)
+
+  /**
+   * Error Handling
+   */
+
+  // fallbackTo
+
+  trait DatabaseRepository {
+    def readMagicNumber(): Future[Int]
+
+    def updateMagicNumber(number: Int): Future[Boolean]
+  }
+
+  trait FileBackup {
+    def readMagicNumberFromLatestBackup(): Future[Int]
+  }
+
+  trait MagicNumberService {
+    val repository: DatabaseRepository
+    val backup: FileBackup
+
+    val magicNumberF: Future[Int] =
+      repository.readMagicNumber()
+        .fallbackTo(backup.readMagicNumberFromLatestBackup())
+  }
+
+  // recover
+
+  val recoveredF: Future[Int] = Future(3 / 0).recover {
+    case _: ArithmeticException => 0
+  }
+
+  // recoverWith
+
+  val recoveredWithF: Future[Int] = Future(3 / 0).recoverWith {
+    case _: ArithmeticException => aFuture
+  }
 }
