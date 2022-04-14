@@ -97,4 +97,25 @@ object TypeClasses extends App {
   val anotherJohn = User("John", 32, "john@abc.com")
   println(john === anotherJohn)
   // new TypeSafeEqual[User](john).===(anotherJohn)(NameEquality)
+
+  // ==========================================
+
+  // Context Bounds
+  def htmlBoilerPlate[T](content: T)(implicit serializer: HTMLSerializer[T]): String = {
+    s"<html><body>${content.toHTML(serializer)}</body></html>"
+  }
+
+  def htmlSugar[T: HTMLSerializer](content: T): String = {
+    val serializer = implicitly[HTMLSerializer[T]]
+    s"<html><body>${content.toHTML(serializer)}</body></html>"
+  }
+
+  // ==========================================
+
+  // implicitly
+  case class Permissions(mask: String)
+
+  implicit val defaultPermissions: Permissions = Permissions("0744")
+
+  val standardPerms = implicitly[Permissions]
 }
